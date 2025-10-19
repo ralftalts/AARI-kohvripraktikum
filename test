@@ -1,11 +1,10 @@
 import RPi.GPIO as GPIO
 import time
 
-BUTTON = 23
+BUTTON = 18  # muuda GPIO pinni
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
-GPIO.cleanup()
 GPIO.setup(BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 def callback(channel):
