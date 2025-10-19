@@ -2,108 +2,109 @@ import RPi.GPIO as GPIO
 import time
 
 # Led muutujad
-AUTO_RED = 17
-AUTO_YELLOW = 27
-AUTO_GREEN = 22
-PED_RED = 5
-PED_GREEN = 6
-BUTTON = 23           
-BUTTON_LIGHT = 19
+auto_punane = 17
+auto_kollane = 27
+auto_roheline = 22
+jk_punane = 5
+jk_roheline = 6
+nupp = 23           
+nupp_tuli = 19
 
-# --- GPIO seadistus ---
+# Et asi töötaks
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
-for pin in [AUTO_RED, AUTO_YELLOW, AUTO_GREEN, PED_RED, PED_GREEN, BUTTON_LIGHT]:
+for pin in [auto_punane, auto_kollane, auto_roheline, jk_punane, jk_roheline, nupp_tuli]:
     GPIO.setup(pin, GPIO.OUT)
 
-GPIO.setup(BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(nupp, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-# --- Muutujad ---
-button_pressed = False
-last_button_state = GPIO.HIGH
+# Misc. muutujad
+nupp_pressed = False
+last_nupp_state = GPIO.HIGH
 last_press_time = 0
-debounce_time = 0.3  # sekundites (300 ms)
+veaaeg = 0.3  # sekundites (300 ms)
 
 try:
     print("Foor töötab. Vajuta nuppu, et jalakäijad saaksid üle tee...")
 
     while True:
-        # --- Kontrolli nuppu iga tsükli jooksul ---
-        current_state = GPIO.input(BUTTON)
-        if current_state == GPIO.LOW and last_button_state == GPIO.HIGH:
+        # pollimine
+        current_state = GPIO.input(nupp)
+        if current_state == GPIO.LOW and last_nupp_state == GPIO.HIGH:
             now = time.time()
-            if now - last_press_time > debounce_time:
-                button_pressed = True
+            if now - last_press_time > veaaeg:
+                nupp_pressed = True
                 last_press_time = now
-                GPIO.output(BUTTON_LIGHT, True)
+                GPIO.output(nupp_tuli, True)
                 print("Nupp vajutatud!")
 
-        last_button_state = current_state
+        last_nupp_state = current_state
 
-        # --- Foori loogika ---
-        # 1️⃣ Autode punane
-        GPIO.output(AUTO_RED, True)
-        GPIO.output(AUTO_YELLOW, False)
-        GPIO.output(AUTO_GREEN, False)
+# Foorid
+        # Auto punane
+        GPIO.output(auto_punane, True)
+        GPIO.output(auto_kollane, False)
+        GPIO.output(auto_roheline, False)
 
-        if button_pressed:
-            # Jalakäijate roheline süttib
-            GPIO.output(PED_GREEN, True)
-            GPIO.output(PED_RED, False)
-            time.sleep(5)  # 5 sekundit jalakäijate rohelist
+        # Jalakäija roheline
+        if nupp_pressed:
+            GPIO.output(jk_roheline, True)
+            GPIO.output(jk_punane, False)
+            time.sleep(5)  
 
-            # Jalakäijate roheline kustub
-            GPIO.output(PED_GREEN, False)
-            GPIO.output(PED_RED, True)
-            button_pressed = False
-            GPIO.output(BUTTON_LIGHT, False)
+            # Jalakäija roheline kustub
+            GPIO.output(jk_roheline, False)
+            GPIO.output(jk_punane, True)
+            nupp_pressed = False
+            GPIO.output(nupp_tuli, False)
 
         else:
-            # Kui nuppu pole vajutatud, hoia jalakäijatel punane
-            GPIO.output(PED_GREEN, False)
-            GPIO.output(PED_RED, True)
+            # Nuppu ei vajuta, ole punane
+            GPIO.output(jk_roheline, False)
+            GPIO.output(jk_punane, True)
 
-        # 2️⃣ Kollane 1 s
-        GPIO.output(AUTO_RED, False)
-        GPIO.output(AUTO_YELLOW, True)
-        # Pollime ka kollase ajal
-        for _ in range(10):  # 1 sekund, kontroll iga 0.1 s
-            current_state = GPIO.input(BUTTON)
-            if current_state == GPIO.LOW and last_button_state == GPIO.HIGH:
+        # Auto kollane
+        GPIO.output(auto_punane, False)
+        GPIO.output(auto_kollane, True)
+        # Pollimine (sama kood mis enne)
+        for _ in range(10):  
+            current_state = GPIO.input(nupp)
+            if current_state == GPIO.LOW and last_nupp_state == GPIO.HIGH:
                 now = time.time()
-                if now - last_press_time > debounce_time:
-                    button_pressed = True
+                if now - last_press_time > veaaeg:
+                    nupp_pressed = True
                     last_press_time = now
-                    GPIO.output(BUTTON_LIGHT, True)
+                    GPIO.output(nupp_tuli, True)
                     print("Nupp vajutatud!")
-            last_button_state = current_state
+            last_nupp_state = current_state
             time.sleep(0.1)
 
-        # 3️⃣ Roheline 5 s
-        GPIO.output(AUTO_YELLOW, False)
-        GPIO.output(AUTO_GREEN, True)
-        # Kontrolli nuppu 5 sekundi jooksul
+        # Auto roheline
+        GPIO.output(auto_kollane, False)
+        GPIO.output(auto_roheline, True)
+        # Pollimine (sama kood mis enne)
         for _ in range(50):
-            current_state = GPIO.input(BUTTON)
-            if current_state == GPIO.LOW and last_button_state == GPIO.HIGH:
+            current_state = GPIO.input(nupp)
+            if current_state == GPIO.LOW and last_nupp_state == GPIO.HIGH:
                 now = time.time()
-                if now - last_press_time > debounce_time:
-                    button_pressed = True
+                if now - last_press_time > veaaeg:
+                    nupp_pressed = True
                     last_press_time = now
-                    GPIO.output(BUTTON_LIGHT, True)
+                    GPIO.output(nupp_tuli, True)
                     print("Nupp vajutatud!")
-            last_button_state = current_state
+            last_nupp_state = current_state
             time.sleep(0.1)
 
-        # 4️⃣ Kollane vilgub 3x
+        # Tgasi punaseks, kollane vilgub
         for _ in range(3):
-            GPIO.output(AUTO_GREEN, False)
-            GPIO.output(AUTO_YELLOW, True)
+            GPIO.output(auto_roheline, False)
+            GPIO.output(auto_kollane, True)
             time.sleep(0.33)
-            GPIO.output(AUTO_YELLOW, False)
+            GPIO.output(auto_kollane, False)
             time.sleep(0.33)
 
+# Tingimus lõpetamiseks, cleanup eemaldas lolle bugge
 except KeyboardInterrupt:
     print("\nProgrammi katkestati käsitsi.")
 finally:
