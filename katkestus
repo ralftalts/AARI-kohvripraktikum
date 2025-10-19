@@ -1,42 +1,58 @@
 import RPi.GPIO as GPIO
 import time
 
+# GPIO pinni määratlused
 AUTO_RED = 17
 AUTO_YELLOW = 27
 AUTO_GREEN = 22
 PED_RED = 5
 PED_GREEN = 6
-BUTTON = 23           
+BUTTON = 23
 BUTTON_LIGHT = 19
 
+# GPIO seadistus
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
+# Puhasta eelnevad seadistused
+GPIO.cleanup()
+
+# Väljundid
 for pin in [AUTO_RED, AUTO_YELLOW, AUTO_GREEN, PED_RED, PED_GREEN, BUTTON_LIGHT]:
     GPIO.setup(pin, GPIO.OUT)
+    GPIO.output(pin, False)
 
+# Sisend nupule
 GPIO.setup(BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-# --- Katkestuse puhastamine (kui see on juba registreeritud) ---
-try:
-    GPIO.remove_event_detect(BUTTON)
-except RuntimeError:
-    pass  # ignoreeri, kui pole lisatud
-
+# Muutujad
 button_pressed = False
 debounce_time = 300  # ms
 
+# Katkestuse funktsioon
 def button_callback(channel):
     global button_pressed
-    button_pressed = True
-    GPIO.output(BUTTON_LIGHT, True)
-    print("Nupp vajutatud!")
+    if not button_pressed:  # väldi topeltvajutusi
+        button_pressed = True
+        GPIO.output(BUTTON_LIGHT, True)
+        print("Nupp vajutatud!")
 
-# --- Katkestuse lisamine ---
-GPIO.add_event_detect(BUTTON, GPIO.FALLING, callback=button_callback, bouncetime=debounce_time)
+# Katkestuse lisamine
+try:
+    GPIO.remove_event_detect(BUTTON)
+except Exception:
+    pass
 
 try:
-    print("Foor töötab (katkestusega). Vajuta nuppu...")
+    GPIO.add_event_detect(BUTTON, GPIO.FALLING, callback=button_callback, bouncetime=debounce_time)
+except RuntimeError as e:
+    print(f"Katkestuse lisamine ebaõnnestus: {e}")
+    GPIO.cleanup()
+    exit(1)
+
+# Peatsilmus
+try:
+    print("Foor töötab. Vajuta nuppu...")
 
     while True:
         # Autode punane
