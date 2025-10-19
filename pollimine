@@ -1,7 +1,7 @@
 import RPi.GPIO as GPIO
 import time
 
-# Pinid (näiteks)
+# Pinid
 AUTO_RED = 17
 AUTO_YELLOW = 27
 AUTO_GREEN = 22
@@ -10,52 +10,74 @@ PED_GREEN = 6
 BUTTON = 13
 BUTTON_LIGHT = 19
 
+# GPIO algseadistus
 GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+
 for pin in [AUTO_RED, AUTO_YELLOW, AUTO_GREEN, PED_RED, PED_GREEN, BUTTON_LIGHT]:
     GPIO.setup(pin, GPIO.OUT)
+
 GPIO.setup(BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 button_pressed = False
+last_button_state = GPIO.HIGH
+last_press_time = 0
+debounce_time = 0.3  # sekundites (300 ms)
 
-while True:
-    # Pollimine
-    if GPIO.input(BUTTON) == GPIO.LOW:
-        button_pressed = True
-        GPIO.output(BUTTON_LIGHT, True)
-    
-    # Autode punane
-    GPIO.output(AUTO_RED, True)
-    GPIO.output(AUTO_YELLOW, False)
-    GPIO.output(AUTO_GREEN, False)
-    if button_pressed:
-        GPIO.output(PED_GREEN, True)
-        GPIO.output(PED_RED, False)
-    else:
+try:
+    while True:
+        # Kontrollime nupu olekut (polling)
+        current_state = GPIO.input(BUTTON)
+        if current_state == GPIO.LOW and last_button_state == GPIO.HIGH:
+            now = time.time()
+            if now - last_press_time > debounce_time:
+                button_pressed = True
+                last_press_time = now
+                GPIO.output(BUTTON_LIGHT, True)
+                print("Nupp vajutatud!")
+
+        last_button_state = current_state
+
+        # --- Foori loogika ---
+        # Autode punane
+        GPIO.output(AUTO_RED, True)
+        GPIO.output(AUTO_YELLOW, False)
+        GPIO.output(AUTO_GREEN, False)
+
+        if button_pressed:
+            GPIO.output(PED_GREEN, True)
+            GPIO.output(PED_RED, False)
+        else:
+            GPIO.output(PED_GREEN, False)
+            GPIO.output(PED_RED, True)
+
+        time.sleep(5)
+
+        # Jalakäijate roheline kustub
         GPIO.output(PED_GREEN, False)
         GPIO.output(PED_RED, True)
-    time.sleep(5)
-    
-    # Jalakäijate roheline kustub
-    GPIO.output(PED_GREEN, False)
-    GPIO.output(PED_RED, True)
-    button_pressed = False
-    GPIO.output(BUTTON_LIGHT, False)
+        button_pressed = False
+        GPIO.output(BUTTON_LIGHT, False)
 
-    # Kollane 1 s
-    GPIO.output(AUTO_RED, False)
-    GPIO.output(AUTO_YELLOW, True)
-    time.sleep(1)
-    
-    # Roheline 5 s
-    GPIO.output(AUTO_YELLOW, False)
-    GPIO.output(AUTO_GREEN, True)
-    time.sleep(5)
-
-    # Kollane vilgub 3x
-    for _ in range(3):
-        GPIO.output(AUTO_GREEN, False)
+        # Kollane 1 s
+        GPIO.output(AUTO_RED, False)
         GPIO.output(AUTO_YELLOW, True)
-        time.sleep(0.33)
+        time.sleep(1)
+        
+        # Roheline 5 s
         GPIO.output(AUTO_YELLOW, False)
-        time.sleep(0.33)
+        GPIO.output(AUTO_GREEN, True)
+        time.sleep(5)
 
+        # Kollane vilgub
+        for _ in range(3):
+            GPIO.output(AUTO_GREEN, False)
+            GPIO.output(AUTO_YELLOW, True)
+            time.sleep(0.33)
+            GPIO.output(AUTO_YELLOW, False)
+            time.sleep(0.33)
+
+except KeyboardInterrupt:
+    print("\nProgrammi katkestati.")
+finally:
+    GPIO.cleanup()
