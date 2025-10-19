@@ -104,7 +104,5 @@ try:
 
 # Tingimus lõpetamiseks, cleanup eemaldas lolle bugge
 except KeyboardInterrupt:
-    print("\nProgrammi katkestati käsitsi.")
-finally:
     GPIO.cleanup()
-    print("GPIO puhastatud ja programm suletud.")
+    print("Programm peatatud ja GPIO puhastatud.")
