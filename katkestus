@@ -1,0 +1,62 @@
+import RPi.GPIO as GPIO
+import time
+
+AUTO_RED = 17
+AUTO_YELLOW = 27
+AUTO_GREEN = 22
+PED_RED = 5
+PED_GREEN = 6
+BUTTON = 13
+BUTTON_LIGHT = 19
+
+GPIO.setmode(GPIO.BCM)
+for pin in [AUTO_RED, AUTO_YELLOW, AUTO_GREEN, PED_RED, PED_GREEN, BUTTON_LIGHT]:
+    GPIO.setup(pin, GPIO.OUT)
+GPIO.setup(BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+button_pressed = False
+
+def button_callback(channel):
+    global button_pressed
+    button_pressed = True
+    GPIO.output(BUTTON_LIGHT, True)
+
+GPIO.add_event_detect(BUTTON, GPIO.FALLING, callback=button_callback, bouncetime=300)
+
+while True:
+    # Autode punane
+    GPIO.output(AUTO_RED, True)
+    GPIO.output(AUTO_YELLOW, False)
+    GPIO.output(AUTO_GREEN, False)
+    if button_pressed:
+        GPIO.output(PED_GREEN, True)
+        GPIO.output(PED_RED, False)
+    else:
+        GPIO.output(PED_GREEN, False)
+        GPIO.output(PED_RED, True)
+    time.sleep(5)
+
+    # Jalakäijate roheline kustub
+    GPIO.output(PED_GREEN, False)
+    GPIO.output(PED_RED, True)
+    button_pressed = False
+    GPIO.output(BUTTON_LIGHT, False)
+
+    # Kollane 1 s
+    GPIO.output(AUTO_RED, False)
+    GPIO.output(AUTO_YELLOW, True)
+    time.sleep(1)
+    
+    # Roheline 5 s
+    GPIO.output(AUTO_YELLOW, False)
+    GPIO.output(AUTO_GREEN, True)
+    time.sleep(5)
+
+    # Kollane vilgub
+    for _ in range(3):
+        GPIO.output(AUTO_GREEN, False)
+        GPIO.output(AUTO_YELLOW, True)
+        time.sleep(0.33)
+        GPIO.output(AUTO_YELLOW, False)
+        time.sleep(0.33)
+
