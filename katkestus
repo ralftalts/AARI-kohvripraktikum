@@ -1,96 +1,86 @@
 import RPi.GPIO as GPIO
 import time
 
-# GPIO pinni määratlused
+# --- PINID ---
 AUTO_RED = 17
 AUTO_YELLOW = 27
 AUTO_GREEN = 22
 PED_RED = 5
 PED_GREEN = 6
-BUTTON = 24
-BUTTON_LIGHT = 19
+BUTTON = 26
+BLUE = 13  # nupu indikaator
 
-# GPIO seadistus
+# --- GPIO seadistus ---
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
-# Puhasta eelnevad seadistused
-GPIO.cleanup()
-
-# Väljundid
-for pin in [AUTO_RED, AUTO_YELLOW, AUTO_GREEN, PED_RED, PED_GREEN, BUTTON_LIGHT]:
+for pin in [AUTO_RED, AUTO_YELLOW, AUTO_GREEN, PED_RED, PED_GREEN, BLUE]:
     GPIO.setup(pin, GPIO.OUT)
-    GPIO.output(pin, False)
+    GPIO.output(pin, GPIO.LOW)
 
-# Sisend nupule
 GPIO.setup(BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-# Muutujad
-button_pressed = False
-debounce_time = 300  # ms
+# --- Globaalne muutujad ---
+ped_request = False  # kas jalakäija on vajutanud
+lock = False  # et vältida mitmekordset katkestust
 
-# Katkestuse funktsioon
-def button_callback(channel):
-    global button_pressed
-    if not button_pressed:  # väldi topeltvajutusi
-        button_pressed = True
-        GPIO.output(BUTTON_LIGHT, True)
-        print("Nupp vajutatud!")
+# --- Katkestuse funktsioon ---
+def button_pressed(channel):
+    global ped_request, lock
+    if not lock:
+        ped_request = True
+        lock = True
+        GPIO.output(BLUE, GPIO.HIGH)  # süüta sinine tuli
+        print("Nupp vajutatud! Jalakäija soov salvestatud.")
 
-# Katkestuse lisamine
-try:
-    GPIO.remove_event_detect(BUTTON)
-except Exception:
-    pass
+# --- Katkestuse registreerimine ---
+GPIO.add_event_detect(BUTTON, GPIO.FALLING, callback=button_pressed, bouncetime=300)
 
 try:
-    GPIO.add_event_detect(BUTTON, GPIO.FALLING, callback=button_callback, bouncetime=debounce_time)
-except RuntimeError as e:
-    print(f"Katkestuse lisamine ebaõnnestus: {e}")
-    GPIO.cleanup()
-    exit(1)
-
-# Peatsilmus
-try:
-    print("Foor töötab. Vajuta nuppu...")
+    GPIO.output(PED_RED, GPIO.HIGH)  # jalakäija punane alguses
 
     while True:
-        # Autode punane
-        GPIO.output(AUTO_RED, True)
-        GPIO.output(AUTO_YELLOW, False)
-        GPIO.output(AUTO_GREEN, False)
+        # --- AUTODE PUNANE ---
+        GPIO.output(AUTO_RED, GPIO.HIGH)
+        GPIO.output(AUTO_YELLOW, GPIO.LOW)
+        GPIO.output(AUTO_GREEN, GPIO.LOW)
 
-        if button_pressed:
-            GPIO.output(PED_GREEN, True)
-            GPIO.output(PED_RED, False)
-            time.sleep(5)
-            button_pressed = False
-            GPIO.output(BUTTON_LIGHT, False)
+        if ped_request:
+            # Jalakäijate roheline süttib ainult sel perioodil
+            GPIO.output(PED_RED, GPIO.LOW)
+            GPIO.output(PED_GREEN, GPIO.HIGH)
+            print("Jalakäijad võivad minna!")
         else:
-            GPIO.output(PED_GREEN, False)
-            GPIO.output(PED_RED, True)
-            time.sleep(5)
+            GPIO.output(PED_RED, GPIO.HIGH)
+            GPIO.output(PED_GREEN, GPIO.LOW)
 
-        # Kollane
-        GPIO.output(AUTO_RED, False)
-        GPIO.output(AUTO_YELLOW, True)
-        time.sleep(1)
-
-        # Roheline
-        GPIO.output(AUTO_YELLOW, False)
-        GPIO.output(AUTO_GREEN, True)
         time.sleep(5)
 
-        # Vilkuv kollane
+        # Pärast punast lõpetame jalakäijate tsükli
+        GPIO.output(PED_GREEN, GPIO.LOW)
+        GPIO.output(PED_RED, GPIO.HIGH)
+        ped_request = False
+        lock = False
+        GPIO.output(BLUE, GPIO.LOW)
+
+        # --- AUTODE KOLLANE ---
+        GPIO.output(AUTO_RED, GPIO.LOW)
+        GPIO.output(AUTO_YELLOW, GPIO.HIGH)
+        time.sleep(1)
+
+        # --- AUTODE ROHELINE ---
+        GPIO.output(AUTO_YELLOW, GPIO.LOW)
+        GPIO.output(AUTO_GREEN, GPIO.HIGH)
+        time.sleep(5)
+
+        # --- AUTODE KOLLANE VILKUMINE ---
+        GPIO.output(AUTO_GREEN, GPIO.LOW)
         for _ in range(3):
-            GPIO.output(AUTO_GREEN, False)
-            GPIO.output(AUTO_YELLOW, True)
+            GPIO.output(AUTO_YELLOW, GPIO.HIGH)
             time.sleep(0.33)
-            GPIO.output(AUTO_YELLOW, False)
+            GPIO.output(AUTO_YELLOW, GPIO.LOW)
             time.sleep(0.33)
 
 except KeyboardInterrupt:
-    print("\nProgrammi katkestati käsitsi.")
-finally:
     GPIO.cleanup()
-    print("GPIO puhastatud ja programm suletud.")
+    print("\nProgramm peatatud ja GPIO puhastatud.")
