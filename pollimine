@@ -26,7 +26,7 @@ last_press_time = 0
 debounce_time = 0.3  # sekundites (300 ms)
 
 try:
-    print("Foor töötab (polling-versioon). Vajuta nuppu, et jalakäijad saaksid üle tee...")
+    print("Foor töötab. Vajuta nuppu, et jalakäijad saaksid üle tee...")
 
     while True:
         # --- Kontrolli nuppu iga tsükli jooksul ---
