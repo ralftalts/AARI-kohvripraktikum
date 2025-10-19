@@ -1,7 +1,6 @@
 import RPi.GPIO as GPIO
 import time
 
-# --- Pinid (BCM numbrid) ---
 AUTO_RED = 17
 AUTO_YELLOW = 27
 AUTO_GREEN = 22
@@ -10,68 +9,63 @@ PED_GREEN = 6
 BUTTON = 23           
 BUTTON_LIGHT = 19
 
-# --- GPIO seadistus ---
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
 for pin in [AUTO_RED, AUTO_YELLOW, AUTO_GREEN, PED_RED, PED_GREEN, BUTTON_LIGHT]:
     GPIO.setup(pin, GPIO.OUT)
 
-# Nupp ühendatud GND ja GPIO23 vahele → kasutame sisemist pull-up takistit
 GPIO.setup(BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-# --- Muutujad ---
+# --- Katkestuse puhastamine (kui see on juba registreeritud) ---
+try:
+    GPIO.remove_event_detect(BUTTON)
+except RuntimeError:
+    pass  # ignoreeri, kui pole lisatud
+
 button_pressed = False
 debounce_time = 300  # ms
 
-# --- Callback-funktsioon (kutsub süsteem automaatselt välja, kui nupp vajutatakse) ---
 def button_callback(channel):
     global button_pressed
     button_pressed = True
     GPIO.output(BUTTON_LIGHT, True)
     print("Nupp vajutatud!")
 
-# --- Sündmuse tuvastus (katkestus) ---
-# Kui pin langeb HIGH → LOW (vajutus, sest PUD_UP), kutsu välja button_callback()
+# --- Katkestuse lisamine ---
 GPIO.add_event_detect(BUTTON, GPIO.FALLING, callback=button_callback, bouncetime=debounce_time)
 
 try:
-    print("Foor töötab (event detect). Vajuta nuppu, et jalakäijad saaksid üle tee...")
+    print("Foor töötab (katkestusega). Vajuta nuppu...")
 
     while True:
-        # --- Autode punane ---
+        # Autode punane
         GPIO.output(AUTO_RED, True)
         GPIO.output(AUTO_YELLOW, False)
         GPIO.output(AUTO_GREEN, False)
 
         if button_pressed:
-            # Jalakäijate roheline
             GPIO.output(PED_GREEN, True)
             GPIO.output(PED_RED, False)
             time.sleep(5)
-
-            # Lõpetame jalakäijate tsükli
             button_pressed = False
             GPIO.output(BUTTON_LIGHT, False)
-            GPIO.output(PED_GREEN, False)
-            GPIO.output(PED_RED, True)
         else:
-            # Kui nuppu pole vajutatud, jalakäijad ootavad
             GPIO.output(PED_GREEN, False)
             GPIO.output(PED_RED, True)
             time.sleep(5)
 
-        # --- Kollane 1 s ---
+        # Kollane
         GPIO.output(AUTO_RED, False)
         GPIO.output(AUTO_YELLOW, True)
         time.sleep(1)
 
-        # --- Roheline 5 s ---
+        # Roheline
         GPIO.output(AUTO_YELLOW, False)
         GPIO.output(AUTO_GREEN, True)
         time.sleep(5)
 
-        # --- Kollane vilgub ---
+        # Vilkuv kollane
         for _ in range(3):
             GPIO.output(AUTO_GREEN, False)
             GPIO.output(AUTO_YELLOW, True)
