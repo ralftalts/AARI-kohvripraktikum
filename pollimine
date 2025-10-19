@@ -1,16 +1,16 @@
 import RPi.GPIO as GPIO
 import time
 
-# Pinid
+# --- Pinid (BCM numbrid) ---
 AUTO_RED = 17
 AUTO_YELLOW = 27
 AUTO_GREEN = 22
 PED_RED = 5
 PED_GREEN = 6
-BUTTON = 13
+BUTTON = 23           # nupp on füüsiline pin 16 (GPIO23)
 BUTTON_LIGHT = 19
 
-# GPIO algseadistus
+# --- GPIO seadistus ---
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
@@ -19,14 +19,17 @@ for pin in [AUTO_RED, AUTO_YELLOW, AUTO_GREEN, PED_RED, PED_GREEN, BUTTON_LIGHT]
 
 GPIO.setup(BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
+# --- Muutujad ---
 button_pressed = False
 last_button_state = GPIO.HIGH
 last_press_time = 0
 debounce_time = 0.3  # sekundites (300 ms)
 
 try:
+    print("Foor töötab (polling-versioon). Vajuta nuppu, et jalakäijad saaksid üle tee...")
+
     while True:
-        # Kontrollime nupu olekut (polling)
+        # --- Kontrolli nuppu iga tsükli jooksul ---
         current_state = GPIO.input(BUTTON)
         if current_state == GPIO.LOW and last_button_state == GPIO.HIGH:
             now = time.time()
@@ -39,37 +42,61 @@ try:
         last_button_state = current_state
 
         # --- Foori loogika ---
-        # Autode punane
+        # 1️⃣ Autode punane
         GPIO.output(AUTO_RED, True)
         GPIO.output(AUTO_YELLOW, False)
         GPIO.output(AUTO_GREEN, False)
 
         if button_pressed:
+            # Jalakäijate roheline süttib
             GPIO.output(PED_GREEN, True)
             GPIO.output(PED_RED, False)
+            time.sleep(5)  # 5 sekundit jalakäijate rohelist
+
+            # Jalakäijate roheline kustub
+            GPIO.output(PED_GREEN, False)
+            GPIO.output(PED_RED, True)
+            button_pressed = False
+            GPIO.output(BUTTON_LIGHT, False)
+
         else:
+            # Kui nuppu pole vajutatud, hoia jalakäijatel punane
             GPIO.output(PED_GREEN, False)
             GPIO.output(PED_RED, True)
 
-        time.sleep(5)
-
-        # Jalakäijate roheline kustub
-        GPIO.output(PED_GREEN, False)
-        GPIO.output(PED_RED, True)
-        button_pressed = False
-        GPIO.output(BUTTON_LIGHT, False)
-
-        # Kollane 1 s
+        # 2️⃣ Kollane 1 s
         GPIO.output(AUTO_RED, False)
         GPIO.output(AUTO_YELLOW, True)
-        time.sleep(1)
-        
-        # Roheline 5 s
+        # Pollime ka kollase ajal
+        for _ in range(10):  # 1 sekund, kontroll iga 0.1 s
+            current_state = GPIO.input(BUTTON)
+            if current_state == GPIO.LOW and last_button_state == GPIO.HIGH:
+                now = time.time()
+                if now - last_press_time > debounce_time:
+                    button_pressed = True
+                    last_press_time = now
+                    GPIO.output(BUTTON_LIGHT, True)
+                    print("Nupp vajutatud!")
+            last_button_state = current_state
+            time.sleep(0.1)
+
+        # 3️⃣ Roheline 5 s
         GPIO.output(AUTO_YELLOW, False)
         GPIO.output(AUTO_GREEN, True)
-        time.sleep(5)
+        # Kontrolli nuppu 5 sekundi jooksul
+        for _ in range(50):
+            current_state = GPIO.input(BUTTON)
+            if current_state == GPIO.LOW and last_button_state == GPIO.HIGH:
+                now = time.time()
+                if now - last_press_time > debounce_time:
+                    button_pressed = True
+                    last_press_time = now
+                    GPIO.output(BUTTON_LIGHT, True)
+                    print("Nupp vajutatud!")
+            last_button_state = current_state
+            time.sleep(0.1)
 
-        # Kollane vilgub
+        # 4️⃣ Kollane vilgub 3x
         for _ in range(3):
             GPIO.output(AUTO_GREEN, False)
             GPIO.output(AUTO_YELLOW, True)
@@ -78,6 +105,7 @@ try:
             time.sleep(0.33)
 
 except KeyboardInterrupt:
-    print("\nProgrammi katkestati.")
+    print("\nProgrammi katkestati käsitsi.")
 finally:
     GPIO.cleanup()
+    print("GPIO puhastatud ja programm suletud.")
