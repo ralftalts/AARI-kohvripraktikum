@@ -7,8 +7,8 @@ AUTO_YELLOW = 27
 AUTO_GREEN = 22
 PED_RED = 5
 PED_GREEN = 6
-BUTTON = 26
-BLUE = 13  # nupu indikaator
+BUTTON = 23
+BLUE = 16 
 
 # --- GPIO seadistus ---
 GPIO.setmode(GPIO.BCM)
@@ -31,7 +31,7 @@ def button_pressed(channel):
         ped_request = True
         lock = True
         GPIO.output(BLUE, GPIO.HIGH)  # süüta sinine tuli
-        print("Nupp vajutatud! Jalakäija soov salvestatud.")
+        print("Nupp vajutatud!")
 
 # --- Katkestuse registreerimine ---
 GPIO.add_event_detect(BUTTON, GPIO.FALLING, callback=button_pressed, bouncetime=300)
@@ -49,7 +49,6 @@ try:
             # Jalakäijate roheline süttib ainult sel perioodil
             GPIO.output(PED_RED, GPIO.LOW)
             GPIO.output(PED_GREEN, GPIO.HIGH)
-            print("Jalakäijad võivad minna!")
         else:
             GPIO.output(PED_RED, GPIO.HIGH)
             GPIO.output(PED_GREEN, GPIO.LOW)
