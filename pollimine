@@ -1,13 +1,13 @@
 import RPi.GPIO as GPIO
 import time
 
-# --- Pinid (BCM numbrid) ---
+# Led muutujad
 AUTO_RED = 17
 AUTO_YELLOW = 27
 AUTO_GREEN = 22
 PED_RED = 5
 PED_GREEN = 6
-BUTTON = 23           # nupp on füüsiline pin 16 (GPIO23)
+BUTTON = 23           
 BUTTON_LIGHT = 19
 
 # --- GPIO seadistus ---
