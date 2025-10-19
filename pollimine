@@ -26,8 +26,6 @@ last_press_time = 0
 veaaeg = 0.3  # sekundites (300 ms)
 
 try:
-    print("Foor töötab. Vajuta nuppu, et jalakäijad saaksid üle tee...")
-
     while True:
         # pollimine
         current_state = GPIO.input(nupp)
