@@ -1,0 +1,3 @@
+alias aeg='date +"%d.%m.%Y %H:%M:%S"'
+alias inf_cpu='ps auxf | sort -nr -k 3 | head -10'
+alias inf_memory='free -m -l -t'
